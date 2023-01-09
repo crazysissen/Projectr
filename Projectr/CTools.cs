@@ -21,7 +21,7 @@ static class CT
 
     static int s_alignState = 0;
     static int s_alignOffset = 0;
-    static char s_alignSeparator = ' ';
+    static char[] s_alignBuffer = new char[1];
 
     public static void Color(int themeColor = 0)
     {
@@ -32,44 +32,41 @@ static class CT
 
     private static void Write<T>(T content, bool newLine)
     {
-        if (newLine)
+        if (!newLine)
         {
-            switch (s_alignState)
-            {
-                case 0:
-                    Console.WriteLine(content);
-                    break;
-
-                case 1:
-                    Console.Write(content);
-                    Console.Write(' ');
-                    Console.Write(" ".Insert * 2);
-                    Console.CursorLeft
-                    break;
-
-                case 2:
-                    Console.WriteLine(content);
-                    s_alignState = 1;
-                    break;
-            }
+            Console.Write(content);
+            return;
         }
-    
-
-        Console.Write(content);
 
         switch (s_alignState)
         {
             case 0:
+                Console.WriteLine(content);
                 break;
 
             case 1:
-
+                Console.Write(content);
+                Console.Write(' ');
+                ConsoleColor bookmark = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write(s_alignBuffer, 0, Math.Max(s_alignOffset - Console.CursorLeft, 1));
+                Console.ForegroundColor = bookmark;
+                Console.Write(' ');
+                s_alignState = 2;
                 break;
 
             case 2:
+                Console.WriteLine(content);
+                s_alignState = 1;
                 break;
         }
     }
+
+    public static void Write<T>(T content)
+        => Write(content, false);
+
+    public static void WriteLine<T>(T content)
+        => Write(content, true);
 
     public static void ColorWrite<T>(T content, int themeColor = 0)
     {
@@ -98,7 +95,100 @@ static class CT
 
         s_alignState = 1;
         s_alignOffset = offset;
-        s_alignSeparator = separator;
+
+        s_alignBuffer = new char[offset];
+        for (int i = 0; i < offset; i++)
+        {
+            s_alignBuffer[i] = separator;
+        }
+    }
+
+    public static void ChoosePreset(ref int presetIndex, string[] categories, string[,] presets, int valueColor = 2)
+    {
+        if (s_alignOffset == 0)
+        {
+            throw new Exception("Call .Align before calling .ChoosePreset.");
+        }
+
+        bool chosen = false;
+
+        do
+        {
+            int bookmark = Console.CursorTop;
+
+            for (int i = 0; i < categories.Length; i++)
+            {
+                CT.WriteLine(categories[i]);
+                CT.ColorWrite(presets[presetIndex, i], valueColor);
+                CT.WriteLine(new string(' ', Console.WindowWidth - Console.CursorLeft));
+            }
+
+            Console.Write("Press Y to confirm this preset, or any other key to switch. ");
+
+            if (Console.ReadKey().Key == ConsoleKey.Y)
+            {
+                chosen = true;
+            }
+            else
+            {
+                presetIndex = (presetIndex + 1) % presets.GetLength(0);
+                Console.SetCursorPosition(0, bookmark);
+            }
+        }
+        while (!chosen);
+
+        Console.Write("\r                                                              \r");
+    }
+
+    public static string GetString(string prompt, bool clear = true)
+    {
+        (int x, int y) bookmark = Console.GetCursorPosition();
+
+        for(;;)
+        {
+            Console.Write(prompt);
+            string? returnValue = Console.ReadLine();
+
+            if (returnValue != null && returnValue != "")
+            {
+                if (clear)
+                {
+                    Console.SetCursorPosition(bookmark.x, bookmark.y);
+                    Console.Write(new string(' ', Console.WindowWidth - bookmark.x));
+                    Console.SetCursorPosition(bookmark.x, bookmark.y);
+                }
+
+                return returnValue;
+            }
+        }
+    }
+
+    public static bool GetYN(string prompt, bool clear = true)
+    {
+        (int x, int y) bookmark = Console.GetCursorPosition();
+
+        //string[] truePrompts = { "y", "yes", "t", "true" };
+        //string[] falsePrompts = { "n", "no", "f", "false" };
+
+        for (;;)
+        {
+            Console.Write(prompt);
+            ConsoleKeyInfo input = Console.ReadKey();
+
+            Console.SetCursorPosition(bookmark.x, bookmark.y);
+            Console.Write(new string(' ', Console.WindowWidth - bookmark.x));
+            Console.SetCursorPosition(bookmark.x, bookmark.y);
+
+            if (input.Key == ConsoleKey.Y)
+            {
+                return true;
+            }
+
+            if (input.Key == ConsoleKey.N)
+            {
+                return false;
+            }
+        }
     }
 
 }

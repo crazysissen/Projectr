@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Projectr": {
+      "commandName": "Project",
+      "commandLineArgs": "Test"
+    }
+  }
+}
