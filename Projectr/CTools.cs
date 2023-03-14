@@ -1,4 +1,6 @@
 ﻿
+using System.Numerics;
+
 static class CT
 {
     public static int Default      => 0;
@@ -140,7 +142,7 @@ static class CT
         Console.Write("\r                                                              \r");
     }
 
-    public static string GetString(string prompt, bool clear = true)
+    public static string GetString(string prompt, bool clear = true, bool allowBlank = false)
     {
         (int x, int y) bookmark = Console.GetCursorPosition();
 
@@ -149,7 +151,12 @@ static class CT
             Console.Write(prompt);
             string? returnValue = Console.ReadLine();
 
-            if (returnValue != null && returnValue != "")
+            if (returnValue == null)
+            {
+                returnValue = "";
+            }
+
+            if (returnValue != "" || allowBlank)
             {
                 if (clear)
                 {

@@ -46,9 +46,9 @@ static void Run(string[] args)
 
     if (Directory.Exists(projectDir))
     {
-        // TODO: Test code only
-        Directory.Delete(projectDir, true);
-        Directory.CreateDirectory(projectDir);
+        //// TODO: Test code only
+        //Directory.Delete(projectDir, true);
+        //Directory.CreateDirectory(projectDir);
 
         if (Directory.GetFileSystemEntries(projectDir).Length > 0)
         {
@@ -132,7 +132,11 @@ static void Run(string[] args)
 
     if (buildPresetIndex == 0)
     {
-        FileBuilder.MSBuild(projectDir, name, dirsRelative);
+        FileBuilder.MSBuildFileInfo msbf = FileBuilder.MSBuild(projectDir, name, dirsRelative);
+
+        Console.WriteLine();
+        FileBuilder.BATFiles(projectDir, name, msbf, dirsRelative);
+        FileBuilder.ProjectFile4Coder(projectDir, name, msbf, dirsRelative);
     }
 
     if (buildPresetIndex == 1)
@@ -142,6 +146,14 @@ static void Run(string[] args)
         CT.ColorWriteLine("CL currently not supported. Aborting.", CT.Default);
         return;
     }
+
+
+
+
+
+    // Other files
+
+
 }
 
 

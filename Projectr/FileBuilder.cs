@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System;
 using System.Xml;
+using System.Globalization;
 
 static class FileBuilder
 {
@@ -33,21 +34,28 @@ static class FileBuilder
 
     class Library
     {
-        public string name;
-        public string dirInclude;
-        public string dirLib;
-        public string dirLibDebug;
-        public string dirLibRelease;
-        public string dirDll;
-        public string dirDllDebug;
-        public string dirDllRelease;
-        public string[] dllFiles;
-        public string[] dllFilesDebug;
-        public string[] dllFilesRelease;
-        public string[] libFiles;
-        public string[] libFilesDebug;
-        public string[] libFilesRelease;
-    };
+        public string name = "";
+
+        public string dirInclude = "";
+
+        public List<string> libDirs = new();
+        public List<string> libDirsDebug = new();
+        public List<string> libDirsRelease = new();
+        public List<string> libFiles = new();
+        public List<string> libFilesDebug = new();
+        public List<string> libFilesRelease = new();
+
+        public List<string> dllFilePaths = new();
+        public List<string> dllFilePathsDebug = new();
+        public List<string> dllFilePathsRelease = new();
+    }
+
+    public class MSBuildFileInfo
+    {
+        public string filename = "";
+        public string defaultConfig = "";
+        public string defaultPlatform = "";
+    }
 
     private static void WriteWrappedElement(this XmlWriter w, string elementName, string attributeName, string attributeValue)
     {
@@ -56,7 +64,7 @@ static class FileBuilder
         w.WriteEndElement();
     }
 
-    public static void MSBuild(string projectDir, string projectName, string[] dirs)
+    public static MSBuildFileInfo MSBuild(string projectDir, string projectName, string[] dirs)
     {
         string fileName = projectName + ".vcxproj";
         string filePath = projectDir + "/" + fileName;
@@ -287,38 +295,101 @@ static class FileBuilder
 
         // Libraries
 
-        //List<Library> libraries = new List<Library>();
+        List<Library> libraries = new List<Library>();
 
-        //Console.WriteLine();
+        Console.WriteLine();
 
-        //for (;;)
-        //{
-        //    if (!CT.GetYN("Add a library? (Y/N) "))
-        //    {
-        //        break;
-        //    }
+        for (;;)
+        {
+            if (!CT.GetYN("Add a library? (Y/N) "))
+            {
+                break;
+            }
 
-        //    Library l = new Library();
+            Library l = new Library();
 
-        //    string libraryName = CT.GetString("Enter library name: " + dirs[3] + "\\");
-        //    if (libraryName.Last() == '\\')
-        //    {
-        //        libraryName.Remove(libraryName.Length - 1);
-        //    }
+            l.name = CT.GetString("Enter library name: " + dirs[3] + "\\");
+            if (l.name.Last() == '\\')
+            {
+                l.name.Remove(l.name.Length - 1);
+            }
 
-        //    CT.WriteLine("Library name");
-        //    CT.ColorWriteLine(libraryName, CT.Highlight);
+            CT.WriteLine("Library name");
+            CT.ColorWriteLine(l.name, CT.Highlight);
 
-        //    string inputString = "";
-        //    while ((inputString = CT.GetString("Input a folder containing .lib files, or nothing. (Debug/Release) " + dirs[3] + "\\" + libraryName + "\\")) != "")
-        //    {
-        //        l.dirLib inputString;
-        //    }
+            string libraryPath = "$(ProjectDir)" + dirs[3] + "\\" + l.name + "\\";
 
-        //    libraries.Add(l);
+            l.dirInclude = libraryPath + CT.GetString("Input path to the include folder: " + dirs[3] + "\\" + l.name + "\\");
 
-        //    Console.WriteLine();
-        //}
+
+
+            // Library folders
+
+            string inputString;
+            while ((inputString = CT.GetString("Input path to a lib-folder, or nothing. (Debug and Release): " + dirs[3] + "\\" + l.name + "\\", true, true)) != "")
+            {
+                l.libDirs.Add(libraryPath + inputString);
+            }
+
+            while ((inputString = CT.GetString("Input path to a lib-folder, or nothing. (Debug only): " + dirs[3] + "\\" + l.name + "\\", true, true)) != "")
+            {
+                l.libDirsDebug.Add(libraryPath + inputString);
+            }
+
+            while ((inputString = CT.GetString("Input path to a lib-folder, or nothing. (Release only): " + dirs[3] + "\\" + l.name + "\\", true, true)) != "")
+            {
+                l.libDirsRelease.Add(libraryPath + inputString);
+            }
+
+
+
+            // Library files
+
+            while ((inputString = CT.GetString("Input name of a lib-file, or nothing. (Debug and Release): ", true, true)) != "")
+            {
+                l.libFiles.Add(inputString);
+            }
+
+            while ((inputString = CT.GetString("Input name of a lib-file, or nothing. (Debug only): ", true, true)) != "")
+            {
+                l.libFilesDebug.Add(inputString);
+            }
+
+            while ((inputString = CT.GetString("Input name of a lib-file, or nothing. (Release only): ", true, true)) != "")
+            {
+                l.libFilesRelease.Add(inputString);
+            }
+
+
+
+            // DLL:s
+
+            while ((inputString = CT.GetString("Input path to a dll-folder, or nothing: " + dirs[3] + "\\" + l.name + "\\", true, true)) != "")
+            {
+                string dllFolderName = inputString;
+                string dllFolderPath = libraryPath + inputString + "\\";
+
+                while ((inputString = CT.GetString("Input name of a dll-file, or nothing. (Debug and Release): " + dirs[3] + "\\" + l.name + "\\" + dllFolderName + "\\", true, true)) != "")
+                {
+                    l.dllFilePaths.Add(dllFolderPath + inputString);
+                }
+
+                while ((inputString = CT.GetString("Input name of a dll-file, or nothing. (Debug only): " + dirs[3] + "\\" + l.name + "\\" + dllFolderName + "\\", true, true)) != "")
+                {
+                    l.dllFilePathsDebug.Add(dllFolderPath + inputString);
+                }
+
+                while ((inputString = CT.GetString("Input name of a dll-file, or nothing. (Release only): " + dirs[3] + "\\" + l.name + "\\" + dllFolderName + "\\", true, true)) != "")
+                {
+                    l.dllFilePathsRelease.Add(dllFolderPath + inputString);
+                }
+            }
+
+
+
+            libraries.Add(l);
+            Console.WriteLine();
+        }
 
 
 
@@ -420,6 +491,107 @@ static class FileBuilder
 
 
 
+        // Library directives
+
+        w.WriteComment("");
+        w.WriteComment("Library directives");
+
+        List<string> includes = new List<string>();
+
+        List<string> dllFiles = new List<string>();
+        List<string> dllFilesDebug = new List<string>();
+        List<string> dllFilesRelease = new List<string>();
+
+        List<string> libDirs = new List<string>();
+        List<string> libDirsRelease = new List<string>();
+        List<string> libDirsDebug = new List<string>();
+
+        List<string> libFiles = new List<string>();
+        List<string> libFilesDebug = new List<string>();
+        List<string> libFilesRelease = new List<string>();
+
+        void AddFiles(ref List<string> target, List<string> source, string desiredEnd)
+        {
+            foreach (string item in source)
+            {
+                if (!item.EndsWith(desiredEnd))
+                {
+                    target.Add(item + desiredEnd);
+                }
+                else
+                {
+                    target.Add(item);
+                }
+            }
+        }
+
+        void WriteLibraryContent(List<string> includePaths, List<string> libPaths, List<string> libs, List<string> dlls, string? conditionConfig)
+        {
+            w.WriteStartElement("ItemDefinitionGroup");
+            if (conditionConfig != null)
+            {
+                w.WriteAttributeString("Condition", "'$(Configuration)'=='" + conditionConfig + "'");
+            }
+
+            w.WriteStartElement("ClCompile");
+            string includeString = "";
+            foreach (string includePath in includePaths)
+            {
+                includeString += includePath + ";";
+            }
+            w.WriteElementString("AdditionalIncludeDirectories", includeString + "%(AdditionalIncludeDirectories)");
+            w.WriteEndElement(); // ClCompile
+
+            w.WriteStartElement("Link");
+            string libPathString = "";
+            foreach (string libPath in libPaths)
+            {
+                libPathString += libPath + ";";
+            }
+            w.WriteElementString("AdditionalLibraryDirectories", libPathString + "%(AdditionalLibraryDirectories)");
+            string libString = "";
+            foreach (string lib in libs)
+            {
+                libString += lib + ";";
+            }
+            w.WriteElementString("AdditionalDependencies", libString + "%(AdditionalDependencies)");
+            w.WriteEndElement(); // Link
+
+            w.WriteStartElement("PostBuildEvent");
+            string copyString = "";
+            foreach (string dllFile in dlls)
+            {
+                copyString += "xcopy /y /e /q \"" + dllFile + "\" \"$(OutDir)\"\n";
+            }
+            w.WriteElementString("Command", copyString);
+            w.WriteEndElement(); // PostBuildEvent
+
+            w.WriteEndElement(); // ItemDefinitionGroup
+        }
+
+        foreach (Library l in libraries)
+        {
+            AddFiles(ref includes, new List<string> { l.dirInclude }, "\\");
+
+            AddFiles(ref dllFiles, l.dllFilePaths, ".dll");
+            AddFiles(ref dllFilesDebug, l.dllFilePathsDebug, ".dll");
+            AddFiles(ref dllFilesRelease, l.dllFilePathsRelease, ".dll");
+
+            AddFiles(ref libFiles, l.libFiles, ".lib");
+            AddFiles(ref libFilesDebug, l.libFilesDebug, ".lib");
+            AddFiles(ref libFilesRelease, l.libFilesRelease, ".lib");
+
+            AddFiles(ref libDirs, l.libDirs, "\\");
+            AddFiles(ref libDirsDebug, l.libDirsDebug, "\\");
+            AddFiles(ref libDirsRelease, l.libDirsRelease, "\\");
+        }
+
+        WriteLibraryContent(includes, libDirs, libFiles, dllFiles, null);
+        WriteLibraryContent(includes, libDirsDebug, libFilesDebug, dllFilesDebug, "Debug");
+        WriteLibraryContent(includes, libDirsRelease, libFilesRelease, dllFilesRelease, "Release");
+
+
+
         // Files
 
         w.WriteComment("");
@@ -480,5 +652,216 @@ static class FileBuilder
         // End
 
         w.Flush();
+        w.Close();
+
+        string text = File.ReadAllText(filePath);
+        text = text.Replace("<!---->\r\n", "<!---->\r\n\r\n\r\n\r\n");
+        File.WriteAllText(filePath, text);
+
+        return new()
+        {
+            filename = fileName,
+            defaultConfig = configs[0].name,
+            defaultPlatform = platforms[0].name,
+        };
+    }
+
+
+
+    public static void BATFiles(string projectDir, string projectName, MSBuildFileInfo info, string[] dirs)
+    {
+        string fileNameBuild = projectDir + "/build.bat";
+        string fileNameRun = projectDir + "/run.bat";
+        string fileNameDebug = projectDir + "/debug.bat";
+        string fileNameDev = projectDir + "/dev.bat";
+
+        string targetDirectory = ".\\" + dirs[1] + "\\" + projectName + "-" + info.defaultPlatform + "-%ConfigName%\\";
+        string targetExecutable = projectName + ".exe";
+
+        try
+        {
+            CT.WriteLine("Build.bat");
+            StreamWriter fileBuild = new(fileNameBuild);
+            fileBuild.WriteLine("@echo off\n");
+            // fileBuild.WriteLine("echo Executing build.bat\n");
+            fileBuild.WriteLine("if not defined VCToolsVersion call vcvarsall x64");
+            fileBuild.WriteLine("if [%1] == [] (set ConfigName=Debug) else set ConfigName=%1\n");
+            fileBuild.WriteLine("msbuild " + info.filename + " /p:configuration=%ConfigName% /v:m");
+            fileBuild.Flush();
+            fileBuild.Close();
+            CT.ColorWriteLine("Created", CT.Good);
+        }
+        catch
+        {
+            CT.ColorWriteLine("Failed", CT.Error);
+        }
+
+        try
+        {
+            CT.WriteLine("Run.bat");
+            StreamWriter fileRun = new(fileNameRun);
+            fileRun.WriteLine("@echo off\n");
+            fileRun.WriteLine("echo Executing run.bat\n");
+            fileRun.WriteLine("if [%1] == [] (set ConfigName=Debug) else set ConfigName=%1\n");
+            fileRun.WriteLine("start /D \"" + targetDirectory + "\" \"" + projectName + " (Running)\" \"" + targetDirectory + targetExecutable + "\"");
+            fileRun.Flush();
+            fileRun.Close();
+            CT.ColorWriteLine("Created", CT.Good);
+        }
+        catch
+        {
+            CT.ColorWriteLine("Failed", CT.Error);
+        }
+
+        try
+        {
+            CT.WriteLine("Debug.bat");
+            StreamWriter fileDebug = new(fileNameDebug);
+            fileDebug.WriteLine("@echo off\n");
+            fileDebug.WriteLine("echo Executing debug.bat\n");
+            fileDebug.WriteLine("if [%1] == [] (set ConfigName=Debug) else set ConfigName=%1\n");
+            fileDebug.WriteLine("pushd \"" + targetDirectory + "\"");
+            fileDebug.WriteLine("call remedy " + targetExecutable);
+            fileDebug.WriteLine("popd");
+            fileDebug.Flush();
+            fileDebug.Close();
+            CT.ColorWriteLine("Created", CT.Good);
+        }
+        catch
+        {
+            CT.ColorWriteLine("Failed", CT.Error);
+        }
+
+        try
+        {
+            CT.WriteLine("Dev.bat");
+            StreamWriter fileDev = new(fileNameDev);
+            fileDev.WriteLine("@echo off\n");
+            fileDev.WriteLine("call vcvarsall x64");
+            fileDev.WriteLine("call 4ed . -W\n");
+            fileDev.WriteLine("$wshell = New-Object -ComObject wscript.shell");
+            fileDev.WriteLine("$wshell.AppActivate('4coder')");
+            fileDev.Flush();
+            fileDev.Close();
+            CT.ColorWriteLine("Created", CT.Good);
+        }
+        catch
+        {
+            CT.ColorWriteLine("Failed", CT.Error);
+        }
+    }
+
+    public static void ProjectFile4Coder(string projectDir, string projectName, MSBuildFileInfo info, string[] dirs)
+    {
+        string[] rows =
+        {
+            "version(2);",
+            "project_name = \"" + projectName + "\";",
+            "",
+            "patterns = ",
+            "{",
+            "\t\"*.c\",",
+            "\t\"*.cpp\",",
+            "\t\"*.h\",",
+            "\t\"*.hpp\",",
+            "\t\"*.hlsl\",",
+            "\t\"*.glsl\",",
+            "\t\"*.bat\",",
+            "\t\"*.4coder\",",
+            "\t\"*.vcxproj\"",
+            "};",
+            "",
+            "blacklist_patterns = ",
+            "{ ",
+            "\t\".*\" ",
+            "};",
+            "",
+            "load_paths_base = ",
+            "{",
+            "\t{ .path = \"" + dirs[0] + "/\", .relative = true, .recursive = true, },",
+            "};",
+            "",
+            "load_paths = ",
+            "{",
+            "\t.win = load_paths_base,",
+            "\t.linux = load_paths_base,",
+            "\t.mac = load_paths_base,",
+            "};",
+            "",
+            "commands =",
+            "{",
+            "\t.build = ",
+            "\t{ ",
+            "\t\t.name = \"build\",",
+            "\t\t.out = \"*build*\", ",
+            "\t\t.footer_panel = true, ",
+            "\t\t.save_dirty_files = true,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"build.bat\"",
+            "\t},",
+            "",
+            "\t.run = ",
+            "\t{ ",
+            "\t\t.name = \"run\",",
+            "\t\t.out = \"*run*\", ",
+            "\t\t.footer_panel = true, ",
+            "\t\t.save_dirty_files = false,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"run.bat\"",
+            "\t},",
+            "",
+            "\t.debug = ",
+            "\t{ ",
+            "\t\t.name = \"debug\",",
+            "\t\t.out = \"*run*\", ",
+            "\t\t.footer_panel = true, ",
+            "\t\t.save_dirty_files = false,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"debug.bat\"",
+            "\t},",
+            "",
+            "\t.build_release =",
+            "\t{",
+            "\t\t.name = \"build_release\",",
+            "\t\t.out = \"*build*\",",
+            "\t\t.footer_panel = true,",
+            "\t\t.save_dirty_files = true,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"build.bat Release\"",
+            "\t},",
+            "",
+            "\t.run_release = ",
+            "\t{ ",
+            "\t\t.name = \"run_release\",",
+            "\t\t.out = \"*run*\", ",
+            "\t\t.footer_panel = true, ",
+            "\t\t.save_dirty_files = false,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"run.bat Release\"",
+            "\t},",
+            "",
+            "\t.debug_release = ",
+            "\t{ ",
+            "\t\t.name = \"debug_release\",",
+            "\t\t.out = \"*run*\", ",
+            "\t\t.footer_panel = true, ",
+            "\t\t.save_dirty_files = false,",
+            "\t\t.cursor_at_end = true,",
+            "\t\t.win = \"debug.bat Release\"",
+            "\t}",
+            "};",
+            "",
+        };
+
+        try
+        {
+            CT.WriteLine("4coder Project");
+            File.WriteAllLines(projectDir + "\\project.4coder", rows);
+            CT.ColorWriteLine("Created", CT.Good);
+        }
+        catch
+        {
+            CT.ColorWriteLine("Failed", CT.Error);
+        }
     }
 }
